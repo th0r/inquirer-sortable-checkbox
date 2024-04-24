@@ -69,6 +69,7 @@
   "devDependencies": {
     "@sindresorhus/tsconfig": "^5.0.0",
     "globby": "^14.0.1",
+    "prettier": "^3.2.5",
     "typescript": "^5.4.5"
   },
   "scripts": {
