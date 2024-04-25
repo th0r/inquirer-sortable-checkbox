@@ -77,7 +77,8 @@
     "tsc": "npm run tsc:esm && npm run tsc:cjs",
     "tsc:esm": "rm -rf dist/esm && tsc -p ./tsconfig.json",
     "tsc:cjs": "rm -rf dist/cjs && tsc -p ./tsconfig.cjs.json && node ./tools/fix-ext.mjs",
-    "example": "node --no-warnings --loader ts-node/esm example.mts"
+    "example": "node --no-warnings --loader ts-node/esm example.mts",
+    "prepare": "npm run tsc"
   },
   "publishConfig": {
     "access": "public"
