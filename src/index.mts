@@ -14,6 +14,7 @@ import {
   isEnterKey,
   ValidationError,
   type Theme,
+  KeypressEvent,
 } from '@inquirer/core';
 import type { PartialDeep } from '@inquirer/type';
 import chalk from 'chalk';
@@ -55,7 +56,6 @@ type Choice<Value> = {
   value: Value;
   disabled?: boolean | string;
   checked?: boolean;
-  type?: never;
 };
 
 type Config<Value> = {
@@ -64,7 +64,7 @@ type Config<Value> = {
   pageSize?: number;
   instructions?: string | boolean;
   choices: ReadonlyArray<Choice<Value>>;
-  loop?: boolean;
+  sortingLoop?: boolean;
   required?: boolean;
   validate?: (
     items: ReadonlyArray<Item<Value>>,
@@ -74,30 +74,11 @@ type Config<Value> = {
 
 type Item<Value> = Choice<Value>;
 
-function isSelectable<Value>(item: Item<Value>): item is Choice<Value> {
-  return !item.disabled;
-}
-
-function isChecked<Value>(item: Item<Value>): item is Choice<Value> {
-  return isSelectable(item) && Boolean(item.checked);
-}
-
-function toggle<Value>(item: Item<Value>): Item<Value> {
-  return isSelectable(item) ? { ...item, checked: !item.checked } : item;
-}
-
-function check(checked: boolean) {
-  return function <Value>(item: Item<Value>): Item<Value> {
-    return isSelectable(item) ? { ...item, checked } : item;
-  };
-}
-
 export default createPrompt(
   <Value extends unknown>(config: Config<Value>, done: (value: Array<Value>) => void) => {
     const {
       instructions,
       pageSize = 7,
-      loop = true,
       choices,
       required,
       validate = () => true,
@@ -139,11 +120,10 @@ export default createPrompt(
         } else {
           setError(isValid || 'You must select a valid value');
         }
-      } else if (isUpKey(key) || isDownKey(key)) {
+      } else if (isActivateNextItemKey(key) || isActivatePreviousItemKey(key)) {
         if (
-          loop ||
-          (isUpKey(key) && active !== bounds.first) ||
-          (isDownKey(key) && active !== bounds.last)
+          (isActivatePreviousItemKey(key) && active !== bounds.first) ||
+          (isActivateNextItemKey(key) && active !== bounds.last)
         ) {
           const offset = isUpKey(key) ? -1 : 1;
           let next = active;
@@ -171,6 +151,37 @@ export default createPrompt(
           setActive(position);
           setItems(items.map((choice, i) => (i === position ? toggle(choice) : choice)));
         }
+      } else if (isMoveItemUpKey(key) || isMoveItemDownKey(key)) {
+        if (items.length < 2) {
+          return;
+        }
+
+        const offset = isMoveItemUpKey(key) ? -1 : 1;
+        let moveActiveTo = active + offset;
+
+        if (
+          !config.sortingLoop &&
+          (moveActiveTo < 0 || moveActiveTo > items.length - 1)
+        ) {
+          return;
+        }
+
+        let newItems: Array<Item<Value>>;
+
+        if (moveActiveTo === -1) {
+          newItems = [...items.slice(1), items[0]!];
+          moveActiveTo = items.length - 1;
+        } else if (moveActiveTo === items.length) {
+          newItems = [items.at(-1)!, ...items.slice(0, -1)];
+          moveActiveTo = 0;
+        } else {
+          newItems = [...items];
+          newItems[moveActiveTo] = items[active]!;
+          newItems[active] = items[moveActiveTo]!;
+        }
+
+        setItems(newItems);
+        setActive(moveActiveTo);
       }
     });
 
@@ -193,7 +204,7 @@ export default createPrompt(
         return color(`${cursor}${checkbox} ${line}`);
       },
       pageSize,
-      loop,
+      loop: false,
     });
 
     if (status === 'done') {
@@ -220,6 +231,8 @@ export default createPrompt(
           `${theme.style.key('space')} to select`,
           `${theme.style.key('a')} to toggle all`,
           `${theme.style.key('i')} to invert selection`,
+          `${theme.style.key('ctrl+up')} to move item up`,
+          `${theme.style.key('ctrl+down')} to move item down`,
           `and ${theme.style.key('enter')} to proceed`,
         ];
         helpTipTop = ` (Press ${keys.join(', ')})`;
@@ -243,3 +256,37 @@ export default createPrompt(
     return `${prefix} ${message}${helpTipTop}\n${page}${helpTipBottom}${error}${ansiEscapes.cursorHide}`;
   },
 );
+
+function isSelectable<Value>(item: Item<Value>): item is Choice<Value> {
+  return !item.disabled;
+}
+
+function isChecked<Value>(item: Item<Value>): item is Choice<Value> {
+  return isSelectable(item) && Boolean(item.checked);
+}
+
+function toggle<Value>(item: Item<Value>): Item<Value> {
+  return isSelectable(item) ? { ...item, checked: !item.checked } : item;
+}
+
+function check(checked: boolean) {
+  return function <Value>(item: Item<Value>): Item<Value> {
+    return isSelectable(item) ? { ...item, checked } : item;
+  };
+}
+
+function isActivatePreviousItemKey(key: KeypressEvent): boolean {
+  return isUpKey(key) && !key.ctrl;
+}
+
+function isActivateNextItemKey(key: KeypressEvent): boolean {
+  return isDownKey(key) && !key.ctrl;
+}
+
+function isMoveItemUpKey(key: KeypressEvent): boolean {
+  return key.ctrl && isUpKey(key);
+}
+
+function isMoveItemDownKey(key: KeypressEvent): boolean {
+  return key.ctrl && isDownKey(key);
+}
