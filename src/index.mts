@@ -134,7 +134,6 @@ export default createPrompt(
         }
       } else if (isSpaceKey(key)) {
         setError(undefined);
-        setShowHelpTip(false);
         setItems(items.map((choice, i) => (i === active ? toggle(choice) : choice)));
       } else if (key.name === 'a') {
         const selectAll = Boolean(
@@ -152,6 +151,8 @@ export default createPrompt(
           setItems(items.map((choice, i) => (i === position ? toggle(choice) : choice)));
         }
       } else if (isMoveItemUpKey(key) || isMoveItemDownKey(key)) {
+        setShowHelpTip(false);
+
         if (items.length < 2) {
           return;
         }
