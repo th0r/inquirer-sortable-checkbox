@@ -70,12 +70,14 @@
     "@sindresorhus/tsconfig": "^5.0.0",
     "globby": "^14.0.1",
     "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },
   "scripts": {
     "tsc": "npm run tsc:esm && npm run tsc:cjs",
     "tsc:esm": "rm -rf dist/esm && tsc -p ./tsconfig.json",
-    "tsc:cjs": "rm -rf dist/cjs && tsc -p ./tsconfig.cjs.json && node ./tools/fix-ext.mjs"
+    "tsc:cjs": "rm -rf dist/cjs && tsc -p ./tsconfig.cjs.json && node ./tools/fix-ext.mjs",
+    "example": "node --no-warnings --loader ts-node/esm example.mts"
   },
   "publishConfig": {
     "access": "public"
